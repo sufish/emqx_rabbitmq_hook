@@ -9,7 +9,7 @@
 ]).
 
 start(_StartType, _StartArgs) ->
-  {ok, Sup} = emqx_plugin_template_sup:start_link(),
+  {ok, Sup} = emqx_rabbitmq_hook_sup:start_link(),
   emqx_rabbitmq_hook:load(application:get_all_env()),
   {ok, Sup}.
 

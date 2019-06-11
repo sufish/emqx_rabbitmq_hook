@@ -1,7 +1,7 @@
 {application,emqx_rabbitmq_hook,
              [{description,"EMQ X RabbitMQ Hook"},
-              {vsn,"git"},
+              {vsn,"0.0.1"},
               {modules,[]},
               {registered,[emqx_rabbitmq_hook_sup]},
-              {applications,[kernel,stdlib]},
-              {mod,{emqx_rabbitmq_hook_sup_app,[]}}]}.
+              {applications,[kernel,stdlib,ecpool,amqp_client,bson]},
+              {mod,{emqx_rabbitmq_hook_app,[]}}]}.
