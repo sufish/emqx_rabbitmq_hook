@@ -63,15 +63,19 @@ on_client_disconnected(#{client_id := ClientId, username := Username}, ReasonCod
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
   {ok, Message};
 
-on_message_publish(Message = #message{topic = Topic, flags = #{retain := Retain}, headers = #{username := Username}}, _Env) ->
+on_message_publish(Message = #message{topic = Topic, flags = #{retain := Retain}}, _Env) ->
+  Username = case maps:find(username, Message#message.headers) of
+               {ok, Value} -> Value;
+               _ -> undefined
+             end,
   Doc = {
     client_id, Message#message.from,
     username, Username,
     topic, Topic,
     qos, Message#message.qos,
     retained, Retain,
-    payload, Message#message.payload,
-    ts, emqx_time:now_ms(Message#message.timestamp)
+    payload, {bin, bin, Message#message.payload},
+    published_at, emqx_time:now_ms(Message#message.timestamp)
   },
   emqx_rabbitmq_hook_cli:publish(bson_binary:put_document(Doc), <<"message.publish">>),
   {ok, Message}.
