@@ -1,0 +1,75 @@
+%%-*- mode: erlang -*-
+%% emqx_rabbitmq_hook config mapping
+{mapping, "hook.rabbitmq.host", "emqx_rabbitmq_hook.server", [
+  {datatype, string}
+]}.
+
+{mapping, "hook.rabbitmq.port", "emqx_rabbitmq_hook.server", [
+  {datatype, integer}
+]}.
+
+{mapping, "hook.rabbitmq.username", "emqx_rabbitmq_hook.server", [
+  {default, "guest"},
+  {datatype, string}
+]}.
+
+{mapping, "hook.rabbitmq.password", "emqx_rabbitmq_hook.server", [
+  {default, "guest"},
+  {datatype, string}
+]}.
+
+{mapping, "hook.rabbitmq.pool", "emqx_rabbitmq_hook.server", [
+  {default, 1},
+  {datatype, integer}
+]}.
+
+{mapping, "hook.rabbitmq.reconnect", "emqx_rabbitmq_hook.server", [
+  {default, 3},
+  {datatype, integer}
+]}.
+
+{mapping, "hook.rabbitmq.client.connected", "emqx_rabbitmq_hook.client_connected", [
+  {default, on},
+  {datatype, flag}
+]}.
+
+{mapping, "hook.rabbitmq.client.disconnected", "emqx_rabbitmq_hook.client_disconnected", [
+  {default, on},
+  {datatype, flag}
+]}.
+
+{mapping, "hook.rabbitmq.message.publish", "emqx_rabbitmq_hook.message_publish", [
+  {default, on},
+  {datatype, flag}
+]}.
+
+{mapping, "hook.rabbitmq.exchange", "emqx_rabbitmq_hook.exchange", [
+  {default, "mqtt.events"},
+  {datatype, string}
+]}.
+
+{translation, "emqx_rabbitmq_hook.exchange", fun(Conf) ->
+      list_to_binary(cuttlefish:conf_get("hook.rabbitmq.exchange", Conf))
+end}.
+
+{translation, "emqx_rabbitmq_hook.server", fun(Conf) ->
+    Pool = cuttlefish:conf_get("hook.rabbitmq.pool", Conf),
+    Host = cuttlefish:conf_get("hook.rabbitmq.host", Conf),
+    Port = cuttlefish:conf_get("hook.rabbitmq.port", Conf),
+    Username = list_to_binary(cuttlefish:conf_get("hook.rabbitmq.username", Conf)),
+    Password = list_to_binary(cuttlefish:conf_get("hook.rabbitmq.password", Conf)),
+    ReconnSecs = cuttlefish:conf_get("hook.rabbitmq.reconnect", Conf),
+    Reconn = case ReconnSecs of
+                0 -> false;
+                _ -> ReconnSecs
+             end,
+    [{pool_size, Pool},
+     {host, Host},
+     {port, Port},
+     {auto_reconnect, Reconn},
+     {username, Username},
+     {password, Password}
+    ]
+end}.
+
+

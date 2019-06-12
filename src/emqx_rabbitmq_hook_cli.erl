@@ -10,13 +10,16 @@
 connect(Opts) ->
   ConnOpts = #amqp_params_network{
     host = proplists:get_value(host, Opts),
-    port = proplists:get_value(port, Opts)
+    port = proplists:get_value(port, Opts),
+    username = proplists:get_value(username, Opts),
+    password = proplists:get_value(password, Opts)
   },
   {ok, C} = amqp_connection:start(ConnOpts),
   {ok, C}.
 
 ensure_exchange() ->
-  ensure_exchange(<<"mqtt.events">>).
+  {ok, ExchangeName} = application:get_env(?APP, exchange),
+  ensure_exchange(ExchangeName).
 
 ensure_exchange(ExchangeName) ->
   ecpool:with_client(?APP, fun(C) -> ensure_exchange(ExchangeName, C) end).
@@ -28,7 +31,8 @@ ensure_exchange(ExchangeName, Conn) ->
   amqp_channel:close(Channel).
 
 publish(Payload, RoutingKey) ->
-  publish(<<"mqtt.events">>, Payload, RoutingKey).
+  {ok, ExchangeName} = application:get_env(?APP, exchange),
+  publish(ExchangeName, Payload, RoutingKey).
 
 publish(ExchangeName, Payload, RoutingKey) ->
   ecpool:with_client(?APP, fun(C) -> publish(ExchangeName, Payload, RoutingKey, C) end).

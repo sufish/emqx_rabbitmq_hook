@@ -13,6 +13,7 @@ start_link() ->
 
 init([]) ->
   application:set_env(amqp_client, prefer_ipv6, false),
-  PoolSpec = ecpool:pool_spec(?APP, ?APP, emqx_rabbitmq_hook_cli, [{pool_size, 10}, {host, "127.0.0.1"}, {port, 5672}]),
+  {ok, PoolOpts} = application:get_env(?APP, server),
+  PoolSpec = ecpool:pool_spec(?APP, ?APP, emqx_rabbitmq_hook_cli, PoolOpts),
   {ok, {{one_for_one, 10, 100}, [PoolSpec]}}.
 
