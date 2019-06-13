@@ -12,20 +12,21 @@
   , on_message_publish/2
 ]).
 
--import(emqx_rabbitmq_hook_cli, [ensure_exchange/0, publish/2]).
+-import(emqx_rabbitmq_hook_cli, [ensure_exchange/1, publish/3]).
 -import(bson_binary, [put_document/1]).
 
 -include("emqx_rabbitmq_hook.hrl").
 
 
 %% Called when the plugin application start
-load(Env) ->
-  emqx_rabbitmq_hook_cli:ensure_exchange(),
-  hookup('client.connected', client_connected, fun ?MODULE:on_client_connected/4, [Env]),
-  hookup('client.disconnected', client_disconnected, fun ?MODULE:on_client_disconnected/3, [Env]),
-  hookup('message.publish', message_publish, fun ?MODULE:on_message_publish/2, [Env]).
+load(_Env) ->
+  {ok, ExchangeName} = application:get_env(?APP, exchange),
+  emqx_rabbitmq_hook_cli:ensure_exchange(ExchangeName),
+  hookup('client.connected', client_connected, fun ?MODULE:on_client_connected/4, [ExchangeName]),
+  hookup('client.disconnected', client_disconnected, fun ?MODULE:on_client_disconnected/3, [ExchangeName]),
+  hookup('message.publish', message_publish, fun ?MODULE:on_message_publish/2, [ExchangeName]).
 
-on_client_connected(#{client_id := ClientId, username := Username}, ConnAck, ConnInfo, _Env) ->
+on_client_connected(#{client_id := ClientId, username := Username}, ConnAck, ConnInfo, ExchangeName) ->
   {IpAddr, _Port} = maps:get(peername, ConnInfo),
   Doc = {
     client_id, ClientId,
@@ -36,14 +37,14 @@ on_client_connected(#{client_id := ClientId, username := Username}, ConnAck, Con
     connected_at, emqx_time:now_ms(maps:get(connected_at, ConnInfo)),
     conn_ack, ConnAck
   },
-  emqx_rabbitmq_hook_cli:publish(bson_binary:put_document(Doc), <<"client.connected">>),
+  emqx_rabbitmq_hook_cli:publish(ExchangeName, bson_binary:put_document(Doc), <<"client.connected">>),
   ok.
 
 
-on_client_disconnected(#{}, auth_failure, _Env) ->
+on_client_disconnected(#{}, auth_failure, _ExchangeName) ->
   ok;
 
-on_client_disconnected(#{client_id := ClientId, username := Username}, ReasonCode, _Env) ->
+on_client_disconnected(#{client_id := ClientId, username := Username}, ReasonCode, ExchangeName) ->
   Reason = if
              is_atom(ReasonCode) ->
                ReasonCode;
@@ -56,14 +57,14 @@ on_client_disconnected(#{client_id := ClientId, username := Username}, ReasonCod
     disconnected_at, emqx_time:now_ms(),
     reason, Reason
   },
-  emqx_rabbitmq_hook_cli:publish(bson_binary:put_document(Doc), <<"client.disconnected">>),
+  emqx_rabbitmq_hook_cli:publish(ExchangeName, bson_binary:put_document(Doc), <<"client.disconnected">>),
   ok.
 
 
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
   {ok, Message};
 
-on_message_publish(Message = #message{topic = Topic, flags = #{retain := Retain}}, _Env) ->
+on_message_publish(Message = #message{topic = Topic, flags = #{retain := Retain}}, ExchangeName) ->
   Username = case maps:find(username, Message#message.headers) of
                {ok, Value} -> Value;
                _ -> undefined
@@ -77,7 +78,7 @@ on_message_publish(Message = #message{topic = Topic, flags = #{retain := Retain}
     payload, {bin, bin, Message#message.payload},
     published_at, emqx_time:now_ms(Message#message.timestamp)
   },
-  emqx_rabbitmq_hook_cli:publish(bson_binary:put_document(Doc), <<"message.publish">>),
+  emqx_rabbitmq_hook_cli:publish(ExchangeName, bson_binary:put_document(Doc), <<"message.publish">>),
   {ok, Message}.
 
 %% Called when the plugin application stop
