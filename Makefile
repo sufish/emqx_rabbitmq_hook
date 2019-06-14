@@ -1,24 +1,37 @@
-PROJECT = emqx_rabbitmq_hook
-PROJECT_DESCRIPTION = EMQ X Rabbitmq Hook
 
-CUR_BRANCH := $(shell git branch | grep -e "^*" | cut -d' ' -f 2)
-BRANCH := $(if $(filter $(CUR_BRANCH), master develop), $(CUR_BRANCH), develop)
-DEPS = lager amqp_client ecpool bson
-BUILD_DEPS = emqx cuttlefish
-dep_emqx = git-emqx https://github.com/emqx/emqx $(BRANCH)
-dep_cuttlefish = git-emqx https://github.com/emqx/cuttlefish v2.2.1
-dep_lager = git-emqx https://github.com/erlang-lager/lager master
-dep_amqp_client = git-emqx https://github.com/rabbitmq/rabbitmq-erlang-client master
-dep_ecpool = git-emqx https://github.com/emqx/ecpool v0.3.0
-dep_bson = git-emqx https://github.com/comtihon/bson-erlang master
-ERLC_OPTS += +debug_info
+## shallow clone for speed
 
-NO_AUTOPATCH = cuttlefish
+REBAR_GIT_CLONE_OPTIONS += --depth 1
+export REBAR_GIT_CLONE_OPTIONS
 
-COVER = true
+REBAR = rebar3
+all: compile
 
-$(shell [ -f erlang.mk ] || curl -s -o erlang.mk https://raw.githubusercontent.com/emqx/erlmk/master/erlang.mk)
+compile:
+	$(REBAR) compile
 
-include erlang.mk
-app.config::
-	./deps/cuttlefish/cuttlefish -l info -e etc/ -c etc/emqx_rabbitmq_hook.conf -i priv/emqx_rabbitmq_hook.schema -d data
+clean: distclean
+
+ct: compile
+	$(REBAR) as test ct -v
+
+clean: distclean
+
+eunit: compile
+	$(REBAR) as test eunit
+
+xref:
+	$(REBAR) xref
+
+distclean:
+	@rm -rf _build
+	@rm -f data/app.*.config data/vm.*.args rebar.lock
+
+CUTTLEFISH_SCRIPT = _build/default/lib/cuttlefish/cuttlefish
+
+$(CUTTLEFISH_SCRIPT):
+	@${REBAR} get-deps
+	@if [ ! -f cuttlefish ]; then make -C _build/default/lib/cuttlefish; fi
+
+app.config: $(CUTTLEFISH_SCRIPT) etc/emqx_auth_mysql.conf
+	$(verbose) $(CUTTLEFISH_SCRIPT) -l info -e etc/ -c etc/emqx_auth_mysql.conf -i priv/emqx_auth_mysql.schema -d data
