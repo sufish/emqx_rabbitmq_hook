@@ -21,7 +21,5 @@ $(shell [ -f erlang.mk ] || curl -s -o erlang.mk https://raw.githubusercontent.c
 
 include erlang.mk
 
-app:: rebar.config
-
 app.config::
 	./deps/cuttlefish/cuttlefish -l info -e etc/ -c etc/emqx_rabbitmq_hook.conf -i priv/emqx_rabbitmq_hook.schema -d data
